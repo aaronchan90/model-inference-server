@@ -6,21 +6,37 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <csignal>
 
 #include "service_config.h"
 
-DEFINE_string(config, "default", "service config-file path");
-
 using namespace model_inference_server;
+
+DEFINE_string(config, "", "service config-file path");
+DEFINE_int32(exit_wait, 120, "wait time before exit");
+
+volatile ExitSignal exiting_ = NoSignal;
+std::mutex exit_mu_;
+std::condition_variable exit_cv_;
 
 void pipeSignalHandler(int signum) {
     LOG_FIRST_N(ERROR, 10) << "pipeSignalHandler: " << signum;
-    // TODO
 }
 
 void signalHandler(int signum) {
     LOG_FIRST_N(ERROR, 10) << "signalHandler: " << signum;
-    // TODO
+    if (exiting_ != NoSignal) {
+        return ;
+    }
+    {
+        std::unique_lock<std::mutex> lock(exit_mu_);
+        if (signum == SIGTERM) {
+            exiting_ = GraceExit;
+        }else{
+            exiting_ = ImmediateExit;
+        }
+    }
+    exit_cv_.notify_all();
 }
 
 int main(int argc, char *argv[]) {
@@ -35,15 +51,28 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, signalHandler);
 
     // decode server configures
-    //auto service_config = ServiceHelper::LoadServerConfig(FLAGS_config);
+    std::shared_ptr<ServerConfig> service_config = ServiceHelper::LoadServerConfig(FLAGS_config);
 
     // create inference-server object
 
     LOG(INFO) << "service starting...";
     
-    // TODO
     // wait for exit signals and wait enought time for grace exit
-
+    {
+        std::unique_lock<std::mutex> lock(exit_mu_);
+        exiting_ = NoSignal;
+    }
+    while(exiting_ == NoSignal) {
+        std::unique_lock<std::mutex> lock(exit_mu_);
+        std::chrono::seconds wait_timeout(3600);
+        exit_cv_.wait_for(lock, wait_timeout);
+        LOG(INFO) << "main thread wait up, exiting_: " << exiting_;
+    }
+    if (exiting_ == GraceExit) {
+        LOG(INFO) << "sleep for " << FLAGS_exit_wait << " seconds";
+        std::chrono::seconds wait_time(FLAGS_exit_wait);
+        std::this_thread::sleep_for(wait_time);
+    }
     LOG(INFO) << "service exit";
 
     return 0;
