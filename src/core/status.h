@@ -8,9 +8,12 @@ namespace model_inference_server
 enum class Status {
     Success = 0,
     Failed_Generic,
+    Failed_Invalid_Server_Config,
     Faield_Rpc_Already_Running,
     Failed_Rpc_Not_Running,
     Failed_Model_Repo_Path_Not_Exist = 100,
+    Faield_ModelManager_Already_Running,
+    Faield_ModelManager_Not_Running,
     Failed_Get_GPU_Properties = 200,
     Failed_Infer_No_Scheduler_Configured = 300,
     Failed_Model_Warmup = 400,

@@ -5,8 +5,8 @@ namespace model_inference_server
 {
     InferenceCore::InferenceCore(const std::shared_ptr<ServerConfig>&cfg):service_config_(cfg), running_(false){
         LOG(INFO) << __FUNCTION__;
-
-        auto status = GrpcServer::Create(service_config_, this, &grpc_server_);
+        auto status = ModelManager::Create(service_config_, &model_manager_);
+        status = GrpcServer::Create(service_config_, this, &grpc_server_);
         if (status != Status::Success)
         {
             THROW_ERROR("Fail to create grpc server");
@@ -22,10 +22,16 @@ namespace model_inference_server
     
     Status 
     InferenceCore::Start() {
-        auto status = grpc_server_->Start();
         if (running_){
             return Status::Faield_Rpc_Already_Running;
         }
+
+        auto status = model_manager_->Start();
+        if (status != Status::Success) {
+            THROW_ERROR("Fail to start model manager");
+        }
+
+        status = grpc_server_->Start();
         if (status != Status::Success) {
             THROW_ERROR("Fail to start grpc server");
         }
@@ -35,12 +41,16 @@ namespace model_inference_server
 
     Status
     InferenceCore::Stop() {
-        auto status = grpc_server_->Stop();
         if (!running_){
             return Status::Failed_Rpc_Not_Running;
         }
+        auto status = grpc_server_->Stop();
         if (status != Status::Success) {
             THROW_ERROR("Fail to stop grpc server");
+        } 
+        status = model_manager_->Stop();
+        if (status != Status::Success) {
+            THROW_ERROR("Fail to stop model manager");
         } 
         running_ = false;
         return Status::Success;
@@ -57,6 +67,7 @@ namespace model_inference_server
         // TODO
         return Status::Success;
     }
+    
     Status 
     InferenceCore::GetHealth(const HealthRequest &request, HealthRequest &response) {
         // TODO

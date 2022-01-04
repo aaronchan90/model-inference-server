@@ -31,13 +31,17 @@ link_directories(/usr/local/lib)
 link_directories(${CMAKE_SOURCE_DIR}/../proto/lib)
 
 file(GLOB CXX_SRCS "${CMAKE_SOURCE_DIR}/*.cc")
-file(GLOB model_manage "${CMAKE_SOURCE_DIR}/model_manage/*.cc")
+file(GLOB model_manage "${CMAKE_SOURCE_DIR}/model_manager/*.cc")
+file(GLOB backend "${CMAKE_SOURCE_DIR}/backend/*.cc")
 file(GLOB server "${CMAKE_SOURCE_DIR}/server/*.cc")
-list(APPEND CXX_SRCS ${model_manage} ${server})
+list(APPEND CXX_SRCS ${model_manage} ${server} ${backend})
 
 list(REMOVE_ITEM CXX_SRCS ${CMAKE_SOURCE_DIR}/main.cc)
 
 add_library(core ${CXX_SRCS})
 
-add_executable(model_inferece_server main.cc)
+add_executable(model_inferece_server ${CMAKE_SOURCE_DIR}/main.cc)
 target_link_libraries(model_inferece_server core ${EXTRALIBS})
+
+add_executable(model_manager_test ${CMAKE_SOURCE_DIR}/model_manager_test.cc)
+target_link_libraries(model_manager_test core ${EXTRALIBS})

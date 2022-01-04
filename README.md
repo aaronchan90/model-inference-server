@@ -8,7 +8,6 @@
     - [x] status.h 定义及实现；
     - [x] inference_core 定义；
     - [ ] inference_payload 定义及实现；
-      - [ ] memory_collector
     - [x] proto 定义及实现；
   - [ ] grpc_server 定义及实现；（2022-01-04）
     - [ ] infer_server
@@ -16,5 +15,5 @@
     - [ ] health_server
   - [ ] model_manager 定义及实现；（2022-01-04）
     - [ ] model_manager
-    - [ ] scheduler
+    - [x] scheduler
   - [ ] backend_factory实现；（2022-01-05）
