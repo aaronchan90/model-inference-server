@@ -22,12 +22,13 @@ endif()
 find_package(Threads REQUIRED)
 find_package(Boost)
 
-set(EXTRALIBS proto)
+set(EXTRALIBS proto utils)
 set(EXTRALIBS ${EXTRALIBS} glog gflags protobuf grpc++ grpc grpc++_reflection yaml-cpp boost_system boost_filesystem crc32c rt ${CMAKE_THREAD_LIBS_INIT})
 
 include_directories(${CMAKE_SOURCE_DIR})
 
 link_directories(/usr/local/lib)
+link_directories(${CMAKE_SOURCE_DIR}/../utils/lib)
 link_directories(${CMAKE_SOURCE_DIR}/../proto/lib)
 
 file(GLOB CXX_SRCS "${CMAKE_SOURCE_DIR}/*.cc")

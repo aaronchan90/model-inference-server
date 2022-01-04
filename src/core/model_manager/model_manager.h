@@ -16,17 +16,23 @@
 namespace model_inference_server
 {
 
-class BackendInfo {
-public:
-    BackendInfo() {}
-    ~BackendInfo() {}
+struct BackendInfo {
+    std::string name_;
+    std::string filename_;
+    int64_t last_modified_time_;
+    int64_t version_;
+    
     std::unique_ptr<ModelBackend> backend_;
 };
 
 class ModelRunContext {
 public:
-    ModelRunContext() {}
-    ~ModelRunContext() {}
+    ModelRunContext() {
+        // TODO
+    }
+    ~ModelRunContext() {
+        // TODO
+    }
     std::unique_ptr<Scheduler> scheduler_;
     std::unique_ptr<BackendInfo> backend_info_;
 };
@@ -55,8 +61,11 @@ private:
         int64_t model_version_;
     };
 
-    void GetModelStateUpdate(const std::vector<std::string> &cur_models,
-                            std::vector<ModelLoadInfo> &added,
+    int64_t GetHighestVersion(const std::string& model_name, 
+        const std::string& model_folder, 
+        const std::string& model_filename);
+
+    void GetModelStateUpdate(std::vector<ModelLoadInfo> &added,
                             std::vector<ModelLoadInfo> &updated,
                             std::vector<std::string> &deleted);
 

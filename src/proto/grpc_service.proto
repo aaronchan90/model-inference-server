@@ -1,0 +1,200 @@
+
+syntax = "proto3";
+
+package model_inference_server;
+
+import "api.proto";
+import "data_type.proto";
+import "request_status.proto";
+import "server_status.proto";
+
+//@@
+//@@.. cpp:var:: service GRPCService
+//@@
+//@@   Inference Server GRPC endpoints.
+//@@
+service GRPCService
+{
+  //@@  .. cpp:var:: rpc Status(StatusRequest) returns (StatusResponse)
+  //@@
+  //@@     Get status for entire inference server or for a specified model.
+  //@@
+  rpc Status(StatusRequest) returns (StatusResponse) {}
+
+  //@@  .. cpp:var:: rpc Health(HealthRequest) returns (HealthResponse)
+  //@@
+  //@@     Check liveness and readiness of the inference server.
+  //@@
+  rpc Health(HealthRequest) returns (HealthResponse) {}
+
+  //@@  .. cpp:var:: rpc Infer(InferRequest) returns (InferResponse)
+  //@@
+  //@@     Request inference using a specific model. [ To handle large input
+  //@@     tensors likely need to set the maximum message size to that they
+  //@@     can be transmitted in one pass.
+  //@@
+  rpc Infer(InferRequest) returns (InferResponse) {}
+}
+
+//@@
+//@@.. cpp:var:: message StatusRequest
+//@@
+//@@   Request message for Status gRPC endpoint.
+//@@
+message StatusRequest
+{
+  //@@
+  //@@  .. cpp:var:: string model_name
+  //@@
+  //@@     The specific model status to be returned. If empty return status
+  //@@     for all models.
+  //@@
+  string model_name = 1;
+}
+
+//@@
+//@@.. cpp:var:: message StatusResponse
+//@@
+//@@   Response message for Status gRPC endpoint.
+//@@
+message StatusResponse
+{
+  //@@
+  //@@  .. cpp:var:: RequestStatus request_status
+  //@@
+  //@@     The status of the request, indicating success or failure.
+  //@@
+  RequestStatus request_status = 1;
+
+  //@@
+  //@@  .. cpp:var:: ServerStatus server_status
+  //@@
+  //@@     The server and model status.
+  //@@
+  ServerStatus server_status = 2;
+}
+
+//@@
+//@@.. cpp:var:: message HealthRequest
+//@@
+//@@   Request message for Health gRPC endpoint.
+//@@
+message HealthRequest
+{
+  //@@
+  //@@  .. cpp:var:: string mode
+  //@@
+  //@@     The requested health action: 'live' requests the liveness
+  //@@     state of the inference server; 'ready' requests the readiness state
+  //@@     of the inference server.
+  //@@
+  string mode = 1;
+}
+
+//@@
+//@@.. cpp:var:: message HealthResponse
+//@@
+//@@   Response message for Health gRPC endpoint.
+//@@
+message HealthResponse
+{
+  //@@
+  //@@  .. cpp:var:: RequestStatus request_status
+  //@@
+  //@@     The status of the request, indicating success or failure.
+  //@@
+  RequestStatus request_status = 1;
+
+  //@@
+  //@@  .. cpp:var:: bool health
+  //@@
+  //@@     The result of the request. True indicates the inference server is
+  //@@     live/ready, false indicates the inference server is not live/ready.
+  //@@
+  bool health = 2;
+}
+
+message TensorProto {
+  // The dimensions in the tensor.
+  repeated int64 dims = 1;
+  DataType data_type = 2;
+  // For float
+  repeated float float_data = 3 [packed = true];
+  // For int32, uint8, int8, uint16, int16, bool, and float16
+  // Note about float16: in storage we will basically convert float16 byte-wise
+  // to unsigned short and then store them in the int32_data field.
+  repeated int32 int32_data = 4 [packed = true];
+  // For bytes(image etc.)
+  repeated bytes byte_data = 5;
+  // For strings
+  repeated  string string_data = 6;
+  // For double
+  repeated double double_data = 7 [packed = true];
+  // For int64
+  repeated int64 int64_data = 8 [packed = true];
+}
+
+//@@
+//@@.. cpp:var:: message InferRequest
+//@@
+//@@   Request message for Infer gRPC endpoint.
+//@@
+message InferRequest
+{
+  //@@  .. cpp:var:: string model_name
+  //@@
+  //@@     The name of the model to use for inferencing.
+  //@@
+  string model_name = 1;
+
+  //@@  .. cpp:var:: int64 version
+  //@@
+  //@@     The version of the model to use for inference. If -1
+  //@@     the latest/most-recent version of the model is used.
+  //@@
+  int64 model_version = 2;
+
+  //@@  .. cpp:var:: InferRequestHeader meta_data
+  //@@
+  //@@     Meta-data for the request: input tensors, output
+  //@@     tensors, etc.
+  //@@
+  InferRequestHeader meta_data = 3;
+
+  //@@  .. cpp:var:: bytes raw_input (repeated)
+  //@@
+  //@@     The raw input tensor data in the order specified in 'meta_data'.
+  //@@
+  repeated bytes raw_input = 4;
+
+  repeated TensorProto tensors = 5;
+}
+
+//@@
+//@@.. cpp:var:: message InferResponse
+//@@
+//@@   Response message for Infer gRPC endpoint.
+//@@
+message InferResponse
+{
+  //@@
+  //@@  .. cpp:var:: RequestStatus request_status
+  //@@
+  //@@     The status of the request, indicating success or failure.
+  //@@
+  RequestStatus request_status = 1;
+
+  //@@  .. cpp:var:: InferResponseHeader meta_data
+  //@@
+  //@@     The response meta-data for the output tensors.
+  //@@
+  InferResponseHeader meta_data = 2;
+
+  //@@  .. cpp:var:: bytes raw_output (repeated)
+  //@@
+  //@@     The raw output tensor data in the order specified in 'meta_data'.
+  //@@
+  repeated bytes raw_output = 3;
+
+  repeated TensorProto tensors = 4;
+}

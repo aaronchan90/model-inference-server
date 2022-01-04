@@ -1,0 +1,80 @@
+
+syntax = "proto3";
+
+package model_inference_server;
+
+//@@
+//@@.. cpp:enum:: ModelReadyState
+//@@
+//@@   Readiness status for models.
+//@@
+enum ModelReadyState {
+  MODEL_UNKNOWN = 0;
+  MODEL_READY = 1;
+  MODEL_UNAVAILABLE = 2;
+}
+
+//@@
+//@@.. cpp:var:: message ModelVersionStatus
+//@@
+//@@   Status for a version of a model.
+//@@
+message ModelVersionStatus
+{
+  //@@  .. cpp:var:: ModelReadyState ready_statue
+  //@@
+  //@@     Current readiness state for the model.
+  //@@
+  ModelReadyState ready_state = 1;
+}
+
+//@@
+//@@.. cpp:var:: message ModelStatus
+//@@
+//@@   Status for a model.
+//@@
+message ModelStatus
+{
+  map<int64, ModelVersionStatus> version_status = 2;
+}
+
+//@@
+//@@.. cpp:enum:: ServerReadyState
+//@@
+//@@   Readiness status for the inference server.
+//@@
+enum ServerReadyState {
+  SERVER_INVALID = 0;
+  SERVER_INITIALIZING = 1;
+  SERVER_READY = 2;
+  SERVER_EXITING = 3;
+  SERVER_FAILED_TO_INITIALIZE = 10;
+}
+
+message ServerStatus
+{
+  //@@  .. cpp:var:: string id
+  //@@
+  //@@     The server's ID.
+  //@@
+  string id = 1;
+
+  //@@  .. cpp:var:: string version
+  //@@
+  //@@     The server's version.
+  //@@
+  string version = 2;
+
+  //@@  .. cpp:var:: map<string, ModelStatus> model_status
+  //@@
+  //@@     Status for each model, as a map from model name to the
+  //@@     status.
+  //@@
+  map<string, ModelStatus> model_status = 4;
+
+  //@@  .. cpp:var:: ServerReadyState ready_state
+  //@@
+  //@@     Current readiness state for the server.
+  //@@
+  ServerReadyState ready_state = 7;
+}

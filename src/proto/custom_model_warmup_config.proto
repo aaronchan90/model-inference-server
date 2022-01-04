@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package model_inference_server;
+
+message CumstomModelWarmup
+{
+  message Input
+  {
+    string name = 1;
+    repeated int64 dims = 2;
+  }
+
+  message Output
+  {
+    string name = 1;
+  }
+
+  string name = 1;
+
+  uint32 batch_size = 2;
+
+  repeated Input input = 3;
+  repeated Output output = 4;
+  repeated bytes raw_input = 5;
+}
+
+message CustomModelWarmupConfig
+{
+  repeated CumstomModelWarmup custom_model_warmup = 1;
+}

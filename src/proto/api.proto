@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package model_inference_server;
+
+import "data_type.proto";
+
+message InferSharedMemory
+{
+    // shared memory key
+    string name = 1;
+
+    // shared memory region size to mmap
+    uint32 region_byte_size = 2;
+
+    // data offset in shared memory region where to start read/write data
+    uint64 offset = 3;
+
+    // total byte size of data in shared memory region for consumer
+    uint32 data_byte_size = 4;
+
+    // unmap the shared memory region immediately after processing request (for inference engine) or reuse
+    bool reuse_object = 5;
+}
+
+message InferRequestHeader
+{
+    message Input
+    {
+        // input name
+        string name = 1;
+
+        // input shape
+        repeated int64 dims = 2;
+
+        // total byte size of the input
+        uint64 batch_byte_size = 3;
+
+        DataType data_type = 4;
+    }
+
+    message Output
+    {
+      // output name
+      string name = 1;
+    }
+
+    uint32 batch_size = 1;
+
+    repeated Input input = 2;
+
+    repeated Output output = 3;
+
+    // unique request id
+    uint64 id = 5;
+
+    // shared memory info of request if used
+    InferSharedMemory shared_memory = 8;
+
+    bool debug_mode = 9;
+}
+
+message InferResponseHeader
+{
+    message Output
+    {
+        string name = 1;
+
+        message Raw
+        {
+            repeated int64 dims = 1;
+
+            uint64 batch_byte_size = 2;
+        }
+
+        Raw raw = 2;
+    }
+
+    repeated Output output = 4;
+
+    // unique request id
+    uint64 id = 5;
+
+    // shared memory info of response if used
+    InferSharedMemory shared_memory = 8;
+}
