@@ -3,8 +3,7 @@
 
 #include "basic_data.h"
 #include "status.h"
-#include "model_manager/model_manager.h"
-
+#include "../model_manager/model_manager.h"
 
 using namespace model_inference_server;
 

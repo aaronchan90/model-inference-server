@@ -8,6 +8,18 @@
 namespace model_inference_server
 {
 
+enum class Platform {
+    PLATFORM_UNKNOWN = 0,
+    PLATFORM_PYTORCH_LIBTORCH = 1,
+    PLATFORM_TENSORFLOW_SAVEDMODEL = 2,
+    PLATFORM_TREE_LITE = 3,
+    PLATFORM_TENSORRT = 4,
+    PLATFORM_OPENVINO = 5,
+    PLATFORM_ONNXRUNTIME = 6,
+    PLATFORM_LIGHTGBM = 7,
+    PLATFORM_DEMO = 8,
+};
+
 enum ExitSignal {
     NoSignal = 0,
     GraceExit,

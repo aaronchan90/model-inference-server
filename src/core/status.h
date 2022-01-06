@@ -12,11 +12,14 @@ enum class Status {
     Faield_Rpc_Already_Running,
     Failed_Rpc_Not_Running,
     Failed_Model_Repo_Path_Not_Exist = 100,
+    Failed_Model_Config_Invalid,
+    Failed_Model_Config_IO_Not_Found,
     Faield_ModelManager_Already_Running,
     Faield_ModelManager_Not_Running,
     Failed_Get_GPU_Properties = 200,
     Failed_Infer_No_Scheduler_Configured = 300,
     Failed_Model_Warmup = 400,
+    Failed_Model_Load,
 };
 
 inline std::ostream &operator<<(std::ostream &out, const Status &status){

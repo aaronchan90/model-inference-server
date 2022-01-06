@@ -153,7 +153,6 @@ ModelManager::LoadModels() {
 
     GetModelStateUpdate(added, updated, deleted);
 
-    // TODO
     for (const auto &new_model : added) {
         LOG(INFO) << "new_model:" << new_model.model_name_;
     }
