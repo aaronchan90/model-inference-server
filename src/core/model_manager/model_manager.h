@@ -17,22 +17,19 @@ namespace model_inference_server
 {
 
 struct BackendInfo {
-    std::string name_;
+    std::string model_name_;
     std::string filename_;
-    int64_t last_modified_time_;
-    int64_t version_;
-    
+    std::string path_;
+    Platform platform_;
+    int64_t model_version_;
+    ModelConfig model_config_;
     std::unique_ptr<ModelBackend> backend_;
+
+    Status CreateModelBackend(const std::shared_ptr<ServerConfig> &server_config);
 };
 
 class ModelRunContext {
 public:
-    ModelRunContext() {
-        // TODO
-    }
-    ~ModelRunContext() {
-        // TODO
-    }
     std::unique_ptr<Scheduler> scheduler_;
     std::unique_ptr<BackendInfo> backend_info_;
 };
@@ -53,11 +50,11 @@ public:
 private:
 
     struct ModelLoadInfo {
-        ModelLoadInfo(const std::string &model_name, const std::string &model_folder, int64_t model_version) :
-            model_name_(model_name), model_folder_(model_folder), model_version_(model_version){}
+        ModelLoadInfo(const std::string &model_name, int64_t model_version) :
+            model_name_(model_name), model_version_(model_version){}
 
         std::string model_name_;
-        std::string model_folder_;
+        //std::string model_folder_;
         int64_t model_version_;
     };
 
@@ -70,6 +67,9 @@ private:
                             std::vector<std::string> &deleted);
 
     void LoadModels();
+
+    // generate new ModelRunCtx
+    std::unique_ptr<BackendInfo> LoadModel(const ModelLoadInfo& model_load_info);
 
     void UploadLoop();
 

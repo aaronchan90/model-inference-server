@@ -33,10 +33,11 @@ link_directories(${CMAKE_SOURCE_DIR}/../proto/lib)
 
 file(GLOB CXX_SRCS "${CMAKE_SOURCE_DIR}/*.cc")
 file(GLOB model_manage "${CMAKE_SOURCE_DIR}/model_manager/*.cc")
+file(GLOB scheduler "${CMAKE_SOURCE_DIR}/scheduler/*.cc")
 file(GLOB backend "${CMAKE_SOURCE_DIR}/backend/*.cc")
 file(GLOB demo_backend "${CMAKE_SOURCE_DIR}/backend/demo/*.cc")
 file(GLOB server "${CMAKE_SOURCE_DIR}/server/*.cc")
-list(APPEND CXX_SRCS ${model_manage} ${server} ${backend} ${demo_backend})
+list(APPEND CXX_SRCS ${model_manage} ${server} ${scheduler} ${backend} ${demo_backend})
 
 list(REMOVE_ITEM CXX_SRCS ${CMAKE_SOURCE_DIR}/main.cc)
 

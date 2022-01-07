@@ -1,6 +1,5 @@
 ## 通用模型推理服务框架
 
-
 **开发计划**
   - [x] main.cc && service_config, 实现基本启/停流程以及全局配置解析；（2021-12-31）
   - [x] 全局结构划分；（2022-01-03）
@@ -13,11 +12,13 @@
     - [ ] infer_server
     - [ ] status_server
     - [ ] health_server
-  - [ ] model_manager 定义及实现；（2022-01-04）
-    - [ ] model_manager
-    - [x] scheduler
+  - [x] model_manager 定义及实现；（2022-01-04）
+  - [x] scheduler
+    - [x] simple scheduler
+    - [x] blocking queue
   - [x] backend_factory实现；（2022-01-05）
   - [ ] utils实现
-    - [ ] file-system:
+    - [x] file-system:
       - [x] local,
       - [ ] s3
+    - [x] timer

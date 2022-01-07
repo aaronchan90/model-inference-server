@@ -3,12 +3,33 @@
 #include "../../utils/file_system/file_utils.h"
 #include "../constants.h"
 #include "model_manager.h"
+#include "../scheduler/simple_scheduler.h"
+#include "../backend/backend_common.h"
+#include "../backend/demo/demo_backend_factory.h"
 #include "../../proto/build/model_config.pb.h"
 
 using namespace model_inference_server::utils;
 
 namespace model_inference_server 
 {
+
+Status
+BackendInfo::CreateModelBackend(const std::shared_ptr<ServerConfig> &server_config) {
+    switch (platform_) {
+    case Platform::PLATFORM_DEMO:
+        return DemoBackendFactory::CreateBackend(
+            server_config,
+            model_name_, 
+            model_version_,
+            path_, 
+            model_config_, 
+            &backend_
+        );
+    default:
+        LOG(ERROR) << "platform not supported yet.";
+        return Status::Failed_Model_Config_Platform_Unknown;
+    }
+}
 
 Status
 ModelManager::Create(const std::shared_ptr<ServerConfig> server_config,
@@ -135,9 +156,9 @@ ModelManager::GetModelStateUpdate(std::vector<ModelLoadInfo> &added,
             std::lock_guard<std::mutex> lck(model_map_mu_);
             auto it = model_map_.find(model_name);
             if (it == model_map_.end()) {
-                added.emplace_back(model_name, model_folder, version);
-            } else if (it->second->backend_info_->version_ != version) {
-                updated.emplace_back(model_name, model_folder, version);
+                added.emplace_back(model_name, version);
+            } else if (it->second->backend_info_->model_version_ != version) {
+                updated.emplace_back(model_name, version);
             }
         }
     }
@@ -153,15 +174,100 @@ ModelManager::LoadModels() {
 
     GetModelStateUpdate(added, updated, deleted);
 
+    // new added models
     for (const auto &new_model : added) {
         LOG(INFO) << "new_model:" << new_model.model_name_;
+        auto backend_info = ModelManager::LoadModel(new_model);
+        if (backend_info != nullptr) {
+            auto model_run_context = std::make_unique<ModelRunContext>();
+            model_run_context->backend_info_ = std::move(backend_info);
+            auto backend = model_run_context->backend_info_->backend_.get();
+            auto run_func = std::bind(&ModelBackend::Run, backend, std::placeholders::_1, std::placeholders::_2);
+            model_run_context->scheduler_.reset(new SimpleScheduler(server_cfg_->scheduler_cfg_, 
+                                                                    static_cast<int32_t>(backend->GetInstanceNum()), run_func));
+            //model_run_context->scheduler_.reset(new SimpleScheduler(run_func));
+            model_run_context->scheduler_->Start();
+
+            std::lock_guard<std::mutex> lck(model_map_mu_);
+            model_map_.insert({new_model.model_name_, std::move(model_run_context)});
+            LOG(INFO) << "Model: " << new_model.model_name_ 
+                      << " is added, version: " << new_model.model_version_;
+        }else {
+            LOG(ERROR) << "Fail to load model: " << new_model.model_name_  
+                       << " version: " << new_model.model_version_;
+        }
     }
+
+    // updated models
     for (const auto &updated_model : updated) {
         LOG(INFO) << "updated_model:" << updated_model.model_name_;
+        auto backend_info = ModelManager::LoadModel(updated_model);
+        if (backend_info != nullptr) {
+            {
+                std::lock_guard<std::mutex> lck(model_map_mu_);
+                auto it = model_map_.find(updated_model.model_name_);
+                if (it != model_map_.end()) {
+                    LOG(INFO) << "Model: " << updated_model.model_name_ 
+                              << " release old backend " << it->second->backend_info_->model_version_;
+                    auto backend = backend_info->backend_.get();
+                    auto run_func = std::bind(&ModelBackend::Run, backend, std::placeholders::_1, std::placeholders::_2);
+                    it->second->scheduler_->UpdateBackendInferFunc(run_func);
+                    it->second->backend_info_.swap(backend_info);
+                } else {
+                    LOG(ERROR) << "model does not exist: " << updated_model.model_name_ 
+                               << " version: " << updated_model.model_version_;
+                }
+            }
+            backend_info.reset();
+            LOG(INFO) << "Model: " << updated_model.model_name_ 
+                      << " is updated to version: " << updated_model.model_version_;
+        }else {
+            LOG(ERROR) << "Fail to load model: " << updated_model.model_name_  
+                       << " version: " << updated_model.model_version_;
+        }
     }
+
+    // deleted models
     for (const auto &deleted_model_name : deleted) {
         LOG(INFO) << "deleted_model_name:" << deleted_model_name;
+        std::unique_ptr<ModelRunContext> empty_model_run_context;
+        {
+            std::lock_guard<std::mutex> lck(model_map_mu_);
+            auto it = model_map_.find(deleted_model_name);
+            if (it != model_map_.end()) {
+                it->second.swap(empty_model_run_context);
+                model_map_.erase(it);
+            }
+        }
+
+        empty_model_run_context.reset();
     }
+}
+
+std::unique_ptr<BackendInfo>
+ModelManager::LoadModel(const ModelLoadInfo& model_load_info) {
+    // TODO check if running
+    auto backend_info = std::make_unique<BackendInfo>();
+    backend_info->model_name_ = model_load_info.model_name_;
+    backend_info->model_version_ = model_load_info.model_version_;
+    backend_info->path_ = FileUtils::CombinePath(server_cfg_->model_repo_path_, {backend_info->model_name_});
+
+    auto config_path = FileUtils::CombinePath(server_cfg_->model_repo_path_, {backend_info->model_name_, constants::kModelConfigPbTxt});
+    auto config_content = FileUtils::ReadFileText(config_path);
+    if (!google::protobuf::TextFormat::ParseFromString(config_content, &(backend_info->model_config_))) {
+        LOG(ERROR) << "Fail pase model config " << config_path;
+        return nullptr;
+    }
+    //backend_info->model_filename = backend_info->model_config_.default_model_filename();
+
+    backend_info->platform_ = PlatformHelper::ConvertStringToPlatformType(backend_info->model_config_.platform());
+    auto status = backend_info->CreateModelBackend(server_cfg_);
+    if (status != Status::Success) {
+        LOG(ERROR) << "Fail to create backend for " << backend_info->model_name_;
+        return nullptr;
+    }
+    // TODO warmup model 
+    return backend_info;
 }
 
 void 
@@ -182,7 +288,18 @@ ModelManager::UploadLoop() {
 
 Status
 ModelManager::InferAsync(std::shared_ptr<InferencePayload> &infer_payload) {
-    return Status::Success;
+
+    const auto& model_name = infer_payload->ModelName();
+    auto model_version = infer_payload->ModelVersion();
+
+    std::lock_guard<std::mutex> lck(model_map_mu_);
+    auto it = model_map_.find(model_name);
+    if (it == model_map_.end()) {
+        LOG(ERROR) << "target model backend not found";
+        return Status::Failed_Infer_No_Backend_Found;
+    }
+
+    return it->second->scheduler_->Enqueue(infer_payload);
 }
 
 } // namespace model_inference_server 

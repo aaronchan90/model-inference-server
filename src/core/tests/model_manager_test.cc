@@ -15,6 +15,8 @@ int main() {
     cfg->model_control_cfg_.auto_update_ = true;
     cfg->model_control_cfg_.update_interval_ = 10;
 
+    cfg->scheduler_cfg_.max_queue_size_ = 10;
+
     std::unique_ptr<ModelManager> mm;
     auto status = ModelManager::Create(cfg, &mm);
 

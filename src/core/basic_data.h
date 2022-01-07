@@ -3,8 +3,10 @@
 #include <string>
 #include <mutex>
 #include <vector>
+#include <cstring>
 #include <unordered_map>
 
+#include "constants.h"
 namespace model_inference_server
 {
 
@@ -26,6 +28,50 @@ enum ExitSignal {
     ImmediateExit
 };
 
+class PlatformHelper
+{
+public:
+static Platform ConvertStringToPlatformType(const std::string &platform){
+    if (strcmp(platform.c_str(), constants::kPyTorchLibTorchPlatform) == 0) {
+        return Platform::PLATFORM_PYTORCH_LIBTORCH;
+    } else if (strcmp(platform.c_str(), constants::kTensorflowSavedModelPlatform) == 0) {
+        return Platform::PLATFORM_TENSORFLOW_SAVEDMODEL;
+    } else if (strcmp(platform.c_str(), constants::kTreeLitePlatform) == 0) {
+        return Platform::PLATFORM_TREE_LITE;
+    } else if (strcmp(platform.c_str(), constants::kTensorRTPlatform) == 0) {
+        return Platform::PLATFORM_TENSORRT;
+    } else if (strcmp(platform.c_str(), constants::kOpenVINOPlatform) == 0) {
+        return Platform::PLATFORM_OPENVINO;
+    } else if (strcmp(platform.c_str(), constants::kOnnxRuntimePlatform) == 0) {
+        return Platform::PLATFORM_ONNXRUNTIME;
+    } else if (strcmp(platform.c_str(), constants::kLightGBMPlatform) == 0) {
+        return Platform::PLATFORM_LIGHTGBM;
+    } else {
+        return Platform::PLATFORM_UNKNOWN;
+    }
+}
+
+static const char *ConvertPlatformTypeToString(Platform platform){
+    switch (platform) {
+        case Platform::PLATFORM_PYTORCH_LIBTORCH:
+            return constants::kPyTorchLibTorchPlatform;
+        case Platform::PLATFORM_TENSORFLOW_SAVEDMODEL:
+            return constants::kTensorflowSavedModelPlatform;
+        case Platform::PLATFORM_OPENVINO:
+            return constants::kOpenVINOPlatform;
+        case Platform::PLATFORM_TREE_LITE:
+            return constants::kTreeLitePlatform;
+        case Platform::PLATFORM_TENSORRT:
+            return constants::kTensorRTPlatform;
+        case Platform::PLATFORM_ONNXRUNTIME:
+            return constants::kOnnxRuntimePlatform;
+        case Platform::PLATFORM_LIGHTGBM:
+            return constants::kLightGBMPlatform;
+        default:
+            return constants::kUnsupportedPlatform;
+    }
+}
+};
 // 一些全局配置
 class ModelControlConfig {
 public:
