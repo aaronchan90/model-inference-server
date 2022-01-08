@@ -96,8 +96,7 @@ SimpleScheduler::Stop() {
 void 
 SimpleScheduler::ProcessLoop(int32_t idx) {
     LOG(INFO) << __FUNCTION__ << "idx:" << idx;
-
-    // TODO 
+ 
     while(running_) {
         auto infer_payload = queue_.pop();
         if (infer_payload == nullptr) {

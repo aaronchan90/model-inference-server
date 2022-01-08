@@ -46,6 +46,8 @@ static Platform ConvertStringToPlatformType(const std::string &platform){
         return Platform::PLATFORM_ONNXRUNTIME;
     } else if (strcmp(platform.c_str(), constants::kLightGBMPlatform) == 0) {
         return Platform::PLATFORM_LIGHTGBM;
+    } else if (strcmp(platform.c_str(), constants::kDemoPlatform) == 0) {
+        return Platform::PLATFORM_DEMO;
     } else {
         return Platform::PLATFORM_UNKNOWN;
     }
@@ -67,6 +69,8 @@ static const char *ConvertPlatformTypeToString(Platform platform){
             return constants::kOnnxRuntimePlatform;
         case Platform::PLATFORM_LIGHTGBM:
             return constants::kLightGBMPlatform;
+        case Platform::PLATFORM_DEMO:
+            return constants::kDemoPlatform;
         default:
             return constants::kUnsupportedPlatform;
     }

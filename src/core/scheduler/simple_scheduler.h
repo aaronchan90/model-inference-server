@@ -10,7 +10,6 @@
 #include <condition_variable>
 
 #include "../basic_data.h"
-//#include "blocking_queue.h"
 #include "scheduler_common.h"
 #include "../inference_payload.h"
 

@@ -1,10 +1,13 @@
 #include <thread>
 #include <string>
 #include <memory>
+#include <glog/logging.h>
 
 #include "grpc_server.h"
 #include "grpc_infer_request_context.h"
 #include "../constants.h"
+// !!! 解决 grpc_server 与 inference_core循环依赖的问题
+#include "inference_core.h"
 
 namespace model_inference_server
 {
@@ -37,6 +40,16 @@ public:
             responder_.reset();
         }
 
+        void OnCompleted(){
+            step_ = CallStep::FINISH;
+            // TODO set grpc status code depending on response status
+            responder_->Finish(response_, grpc::Status::OK, this);
+        }
+
+        void SetGrpcInferRequestContext(std::shared_ptr<GrpcInferRequestContext> &grpc_infer_request_context){
+            grpc_infer_request_context_ = grpc_infer_request_context;
+        }
+        
         uint64_t unique_id_; // 标记一个request 的唯一id
         RequestType request_; // 注册到grpc async函数中去自动获取内容
         ResponseType response_;
@@ -64,7 +77,7 @@ public:
     ~Handler() {}
 
     virtual Status Start() override {
-        std::cout << __FUNCTION__ << std::endl;
+        LOG(INFO) << __FUNCTION__ ;
         thd_ = std::thread(&Handler::HandleEvents, this);
     }
 
@@ -89,7 +102,8 @@ public:
     void Process(HandlerState *state, bool rpc_ok) {
         const bool shutdown = (!rpc_ok && (state->step_ == CallStep::START));
         if (rpc_ok == 0 && !shutdown) {
-            std::cout << "rpc_ok false, state: " << static_cast<int>(state->step_) << ", likley client timeout" << std::endl;
+            LOG(INFO) << "rpc_ok false, state: " << static_cast<int>(state->step_) 
+                      << ", likley client timeout";
         }
 
         if (shutdown) {
@@ -117,41 +131,87 @@ protected:
 
 class InferHandler : public Handler<GRPCService::AsyncService, InferRequest, InferResponse> {
 public:
-    InferHandler(GRPCService::AsyncService* svc, grpc::ServerCompletionQueue* cq, InferenceCore *inference_core) : Handler(svc,cq,inference_core) {}
+    InferHandler(GRPCService::AsyncService* svc, 
+                 grpc::ServerCompletionQueue* cq, 
+                 InferenceCore *inference_core) : Handler(svc,cq,inference_core) {
+        LOG(INFO) << "InferHandler is constructed";
+    }
     virtual ~InferHandler() {}
 
     virtual void StartNewRequest() override {
-        // TODO
+        auto state = StateNew();
+        service_->RequestInfer(state->ctx_.get(), &state->request_, state->responder_.get(), cq_, cq_, state);
+        state->step_ = CallStep::START;
+        LOG_FIRST_N(INFO, 3) << "InferHandler::StartNewRequest";
         return;
     }
+
     virtual void TakeAction(HandlerState *state) override {
-        // TODO
-        return; 
+        Status status = Status::Success;
+        auto on_completed_func = std::bind(&HandlerState::OnCompleted, state);
+        try {
+            std::shared_ptr<GrpcInferRequestContext> grpc_infer_request_context(
+                new GrpcInferRequestContext(&state->request_, &state->response_, on_completed_func));
+
+                state->SetGrpcInferRequestContext(grpc_infer_request_context);
+                status = inference_core_->InferAsync(grpc_infer_request_context->GetInferencePayload());
+
+        } catch (const std::exception &ex) {
+            LOG(ERROR) << ex.what();
+            status = Status::Failed_Generic;
+        }
+
+        if (status != Status::Success) {
+            LOG(ERROR) << "Fail to call InferAsync: " << status;
+            auto response_status = state->response_.mutable_request_status();
+            response_status->set_code(RequestStatusCode::INTERNAL);
+            std::stringstream ss;
+            ss << status;
+            response_status->set_msg(ss.str());
+            //response_status->set_server_id(NetworkUtils::GetHostName());
+            on_completed_func();
+        }
     }
 };
 
 class StatusHandler : public Handler<GRPCService::AsyncService, StatusRequest, StatusResponse> {
 public:
-    StatusHandler(GRPCService::AsyncService* svc, grpc::ServerCompletionQueue* cq, InferenceCore *inference_core) : Handler(svc,cq,inference_core) {}
+    StatusHandler(GRPCService::AsyncService* svc, 
+                  grpc::ServerCompletionQueue* cq, 
+                  InferenceCore *inference_core) : Handler(svc,cq,inference_core) {}
     virtual ~StatusHandler() {}
     virtual void StartNewRequest() override {
-        return ;
+        auto state = StateNew();
+        service_->RequestStatus(state->ctx_.get(), &state->request_, state->responder_.get(), cq_, cq_, state);
+        state->step_ = CallStep::START;
+        LOG_FIRST_N(INFO, 3) << "StatusHandler::StartNewRequest";
     }
     virtual void TakeAction(HandlerState *state) override {
-        return ;
+        if (inference_core_->GetStatus(state->request_, state->response_) != Status::Success) {
+            LOG(ERROR) << "Fail to call GetStatus";
+        }
+        state->OnCompleted();
     }
 };
 
 class HealthHandler : public Handler<GRPCService::AsyncService, HealthRequest, HealthResponse> {
 public:
-    HealthHandler(GRPCService::AsyncService* svc, grpc::ServerCompletionQueue* cq, InferenceCore *inference_core) : Handler(svc,cq,inference_core) {}
+    HealthHandler(GRPCService::AsyncService* svc, 
+                  grpc::ServerCompletionQueue* cq, 
+                  InferenceCore *inference_core) : Handler(svc,cq,inference_core) {}
     virtual ~HealthHandler() {}
 
     virtual void StartNewRequest() override {
-        return; 
+        auto state = StateNew();
+        service_->RequestHealth(state->ctx_.get(), &state->request_, state->responder_.get(), cq_, cq_, state);
+        state->step_ = CallStep::START;
+        LOG_FIRST_N(INFO, 3) << "HealthHandler::StartNewRequest"; 
     }
     virtual void TakeAction(HandlerState *state) override {
-        return; 
+        if (inference_core_->GetHealth(state->request_, state->response_) != Status::Success) {
+            LOG(ERROR) << "Fail to call GetHealth";
+        }
+        state->OnCompleted();
     }
 };
 

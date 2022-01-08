@@ -12,6 +12,8 @@
 #include "../basic_data.h"
 #include "../backend/backend_common.h"
 #include "../scheduler/scheduler_common.h"
+#include "../../proto/build/model_config.pb.h"
+#include "../../proto/build/server_status.pb.h"
 
 namespace model_inference_server
 {
@@ -46,6 +48,9 @@ public:
     Status Stop();
 
     Status InferAsync(std::shared_ptr<InferencePayload> &infer_payload);
+
+    size_t GetNumberOfLiveModels();
+    google::protobuf::Map<std::string, ModelStatus> GetModelStatus();
 
 private:
 

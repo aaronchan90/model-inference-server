@@ -1,10 +1,10 @@
 #pragma once
 
+#include "grpc_server.h"
 #include "../inference_payload.h"
 #include "../status.h"
 #include "../basic_data.h"
 #include "../model_manager/model_manager.h"
-#include "grpc_server.h"
 
 namespace model_inference_server
 {
@@ -18,7 +18,7 @@ public:
     Status Stop();
     Status InferAsync(std::shared_ptr<InferencePayload> payload);
     Status GetStatus(const StatusRequest &request, StatusResponse &response);
-    Status GetHealth(const HealthRequest &request, HealthRequest &response);
+    Status GetHealth(const HealthRequest &request, HealthResponse &response);
 
 private:
     std::shared_ptr<ServerConfig> service_config_;

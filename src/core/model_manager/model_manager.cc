@@ -1,12 +1,12 @@
+#include <glog/logging.h>
 #include <google/protobuf/text_format.h>
 
-#include "../../utils/file_system/file_utils.h"
-#include "../constants.h"
 #include "model_manager.h"
+#include "../constants.h"
+#include "../../utils/file_system/file_utils.h"
 #include "../scheduler/simple_scheduler.h"
 #include "../backend/backend_common.h"
 #include "../backend/demo/demo_backend_factory.h"
-#include "../../proto/build/model_config.pb.h"
 
 using namespace model_inference_server::utils;
 
@@ -15,6 +15,7 @@ namespace model_inference_server
 
 Status
 BackendInfo::CreateModelBackend(const std::shared_ptr<ServerConfig> &server_config) {
+    LOG(INFO) << __FUNCTION__;
     switch (platform_) {
     case Platform::PLATFORM_DEMO:
         return DemoBackendFactory::CreateBackend(
@@ -64,6 +65,9 @@ ModelManager::Start() {
         return Status::Faield_ModelManager_Already_Running;
     }
     running_ = true;
+    // immediately load models as beginning
+    LoadModels();
+
     if (server_cfg_->model_control_cfg_.auto_update_) {
         update_thd_ = std::thread(&ModelManager::UploadLoop, this);
     }
@@ -185,7 +189,6 @@ ModelManager::LoadModels() {
             auto run_func = std::bind(&ModelBackend::Run, backend, std::placeholders::_1, std::placeholders::_2);
             model_run_context->scheduler_.reset(new SimpleScheduler(server_cfg_->scheduler_cfg_, 
                                                                     static_cast<int32_t>(backend->GetInstanceNum()), run_func));
-            //model_run_context->scheduler_.reset(new SimpleScheduler(run_func));
             model_run_context->scheduler_->Start();
 
             std::lock_guard<std::mutex> lck(model_map_mu_);
@@ -270,13 +273,41 @@ ModelManager::LoadModel(const ModelLoadInfo& model_load_info) {
     return backend_info;
 }
 
+google::protobuf::Map<std::string, ModelStatus> 
+ModelManager::GetModelStatus()
+{
+    LOG_FIRST_N(INFO, 3) << __FUNCTION__;
+    google::protobuf::Map<std::string, ModelStatus> model_status;
+    std::unique_lock<std::mutex> lck(model_map_mu_);
+    for (const auto &kvp : model_map_) {
+        const auto &name = kvp.first;
+        const auto &backend_info = kvp.second->backend_info_;
+        ModelStatus ms;
+
+        // populate version status, currently only the highest version
+        ModelVersionStatus model_version_status;
+        model_version_status.set_ready_state(ModelReadyState::MODEL_READY);
+        auto version_status = ms.mutable_version_status();
+        (*version_status)[backend_info->model_version_] = std::move(model_version_status);
+
+        model_status[name] = std::move(ms);
+    }
+    return model_status;
+}
+
+size_t 
+ModelManager::GetNumberOfLiveModels() {
+    std::lock_guard<std::mutex> lck(model_map_mu_);
+    return model_map_.size();
+}
+
 void 
 ModelManager::UploadLoop() {
     LOG(INFO) << __FUNCTION__
               << " update_interval_: " << server_cfg_->model_control_cfg_.update_interval_;
     while(true) {
         std::unique_lock<std::mutex> lck(cond_mu_);
-        cond_var_.wait_for(lck, std::chrono::seconds(server_cfg_->model_control_cfg_.update_interval_), [&]{ return (bool)!running_; });
+        cond_var_.wait_for(lck, std::chrono::seconds(server_cfg_->model_control_cfg_.update_interval_), [&]{ return (bool)(!running_); });
         if (running_) {
             LoadModels();
         }else {

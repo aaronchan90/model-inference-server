@@ -26,6 +26,8 @@ static constexpr char kTensorflowSavedModelFilename[] = "saved_model.pb";
 static constexpr char kTensorflowSavedModelPlatform[] = "tensorflow_savedmodel";
 static constexpr char kLightGBMPlatform[] = "lightgbm";
 static constexpr char kLightGBMFilename[] = "lightgbm.txt";
+static constexpr char kDemoPlatform[] = "demo";
+static constexpr char kDemoFilename[] = "model.model";
 static constexpr char kUnsupportedPlatform[] = "unsupported_platform";
 } // constants
 

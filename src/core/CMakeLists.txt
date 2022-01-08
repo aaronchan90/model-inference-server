@@ -43,8 +43,8 @@ list(REMOVE_ITEM CXX_SRCS ${CMAKE_SOURCE_DIR}/main.cc)
 
 add_library(core ${CXX_SRCS})
 
-add_executable(model_inferece_server ${CMAKE_SOURCE_DIR}/main.cc)
-target_link_libraries(model_inferece_server core ${EXTRALIBS})
+add_executable(model_inference_server ${CMAKE_SOURCE_DIR}/main.cc)
+target_link_libraries(model_inference_server core ${EXTRALIBS})
 
 add_executable(model_manager_test ${CMAKE_SOURCE_DIR}/tests/model_manager_test.cc)
 target_link_libraries(model_manager_test core ${EXTRALIBS})

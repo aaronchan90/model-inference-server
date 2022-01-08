@@ -11,7 +11,7 @@ int main() {
 
     std::shared_ptr<ServerConfig> cfg(new ServerConfig());
 
-    cfg->model_repo_path_ = "/root/models/";
+    cfg->model_repo_path_ = "/root/workspace/model-inference-server/demo/model_repo/";
     cfg->model_control_cfg_.auto_update_ = true;
     cfg->model_control_cfg_.update_interval_ = 10;
 

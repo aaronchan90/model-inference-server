@@ -34,13 +34,11 @@ public:
         const std::vector<int64_t> &shape);
 
     const std::string &ModelName() const { return model_name_; }
-
     int64_t ModelVersion() { return model_version_; }
-
     int32_t GetMaxOutputIndex() const { return max_output_index_; }
-
+    InferResponseHeader *GetInferResponseHeader() { return response_header_.get(); }
+    
     MemoryReference *GetInputMemory(int32_t idx);
-
     std::string &GetOutputBuffer(int32_t idx);
 
     void OnInferCompleted(Status status, const std::string &message);
